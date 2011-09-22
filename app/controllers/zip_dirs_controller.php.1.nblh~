@@ -1,0 +1,99 @@
+<?php
+class ZipDirsController extends AppController
+{
+
+    var $name='ZipDirs';
+var $components=array('Auth','UploadFile');
+    var $helpers= array('Html','Form','Javascript','Ajax');
+   
+ 
+    function index()
+    {
+        
+    }
+ 
+  function upload()
+    {
+      
+      if(!empty($this->data))
+              {
+          $result=$this->UploadFile->uploadFiles('zips', $this->data, $this->Auth->user('id'),'ZipDir');
+              }
+              
+              //debug($result);
+              
+              $countUrl= count($result['url']);
+              $countFiles= count($result['name']);
+               $countTypes= count($result['filetype']);
+               
+               for($fp=0;$fp<$countUrl;$fp++)
+               {
+                   $zipDet[$fp]['filepath'] =$result['url'][$fp];
+                     $zipDet[$fp]['user_id'] =$this->Auth->user('id');
+                 
+             
+               }
+             
+               for($fp=0;$fp<$countFiles;$fp++)
+               {
+                   $zipDet[$fp]['filename']=$result['name'][$fp];
+               }
+             for($fp=0;$fp<$countTypes;$fp++)
+               {
+                   $zipDet[$fp]['filetype'] =$result['filetype'][$fp];
+               }
+             //debug($zipDet);
+               if(!empty($zipDet))
+                   {
+                   $this->ZipDir->create();
+                   if($this->ZipDir->saveAll($zipDet)){
+                       $this->Session->setFlash('Successfully uploaded compressed file');
+                       $dirId=$this->ZipDir->getLastInsertId();
+                       $this->redirect('/zip_dirs/unpack/'.$dirId);
+                       
+                       }
+                       else
+                           {
+                       $this->Session->setFlash('upload failed');
+                        // $this->redirect('/users/login');
+                     
+                       }
+                   }
+             
+    }
+    //Extract the zipped file
+    function unpack($id=null)
+    {
+       //debug($id);
+        $zipp=$this->ZipDir->find('first',array('conditions'=>array('ZipDir.id'=>$id)));
+        $fullpath=$zipp['ZipDir']['filepath'] .'/'.$zipp['ZipDir']['filename'];
+        //$dirName=str_replace('.','_',$zipp['ZipDir']['filename']);
+     $dirName=explode('.',$zipp['ZipDir']['filename']);
+        $dirName=$dirName[0];
+        $zipObj = new ZipArchive;
+$file = $zipObj->open($fullpath);
+
+if ($file == TRUE) {
+$extractTo=$zipp['ZipDir']['filepath'] .'/'.$dirName;
+    $zipObj->extractTo($extractTo);
+
+    $zipObj->close();
+    $this->Session->setFlash('Unzip Successfully');
+} else {
+    echo 'Failed to unzip';
+
+}
+
+        
+    }
+          
+    function beforeFilter()
+    {
+      // $this->pageTitle="Restricted Area";
+          //$this->Auth->allow('logout','initDB','login','display');
+        //$this->layout='pages';
+        $this->Auth->allow('login','add');
+        $this->Auth->autoRedirect = false;
+    }
+}
+?>
